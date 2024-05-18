@@ -1,0 +1,36 @@
+<!-- auth.component.html -->
+<div class="auth-container">
+  <h2>Login</h2>
+  <form [formGroup]="loginForm" (ngSubmit)="login()">
+    <div>
+      <label for="login-email">Email</label>
+      <input id="login-email" type="email" formControlName="email" required>
+    </div>
+    <div>
+      <label for="login-password">Password</label>
+      <input id="login-password" type="password" formControlName="password" required>
+    </div>
+    <button type="submit">Login</button>
+  </form>
+  <div *ngIf="loginError" class="error">
+    {{ loginError }}
+  </div>
+</div>
+
+<div class="auth-container" style="margin-top: 2em;">
+  <h2>Register</h2>
+  <form [formGroup]="registerForm" (ngSubmit)="register()">
+    <div>
+      <label for="register-email">Email</label>
+      <input id="register-email" type="email" formControlName="email" required>
+    </div>
+    <div>
+      <label for="register-password">Password</label>
+      <input id="register-password" type="password" formControlName="password" required>
+    </div>
+    <button type="submit">Register</button>
+  </form>
+  <div *ngIf="registerError" class="error">
+    {{ registerError }}
+  </div>
+</div>
