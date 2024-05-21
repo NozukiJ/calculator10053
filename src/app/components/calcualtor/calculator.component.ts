@@ -14,8 +14,8 @@ export class CalculatorComponent implements AfterViewInit {
     history: [],
     favorites: [],
     newCalculation: false,
-    lastOperator: '', // New flag to track the last pressed operator
-    error: false // New flag to indicate if an error occurred
+    lastOperator: '', 
+    error: false 
   };
 
   constructor(private authService: AuthService) {}
@@ -65,6 +65,7 @@ export class CalculatorComponent implements AfterViewInit {
   updateDisplay() {
     const display: any = document.querySelector('.screen-cal');
     display.value = this.replaceOperators(this.calculator.displayValue);
+    display.scrollLeft = display.scrollWidth; 
     this.updateListDisplay('.history-entries', this.calculator.history);
     this.updateListDisplay('.favorites-entries', this.calculator.favorites, true);
   }
@@ -76,9 +77,9 @@ export class CalculatorComponent implements AfterViewInit {
   resetCalculator() {
     this.calculator.displayValue = '0';
     this.calculator.currentInput = '';
-    this.calculator.lastOperator = ''; // Reset last operator
-    this.calculator.error = false; // Reset error flag
-    this.enableAllButtons(); // Enable all buttons when reset
+    this.calculator.lastOperator = ''; 
+    this.calculator.error = false; 
+    this.enableAllButtons(); 
     this.saveCalculatorData();
   }
 
@@ -94,11 +95,14 @@ export class CalculatorComponent implements AfterViewInit {
       }
     }
     this.calculator.displayValue = this.calculator.currentInput;
-    this.calculator.lastOperator = ''; // Reset last operator when digit is input
+    this.calculator.lastOperator = ''; 
   }
 
   inputDecimal(dot) {
-    if (this.calculator.displayValue === '0') {
+    if (this.calculator.newCalculation) {
+      this.calculator.currentInput = '0.';
+      this.calculator.newCalculation = false;
+    } else if (this.calculator.currentInput === '' || this.calculator.currentInput === '0') {
       this.calculator.currentInput = '0.';
     } else {
       const currentOperand = this.calculator.currentInput.split(/[+\-*/]/).pop();
@@ -110,8 +114,9 @@ export class CalculatorComponent implements AfterViewInit {
   }
 
   handleOperator(nextOperator) {
-    if (this.calculator.lastOperator === '=' && nextOperator !== '=') {
+    if (this.calculator.newCalculation && nextOperator !== '=') {
       this.calculator.currentInput = this.calculator.displayValue;
+      this.calculator.newCalculation = false;
     }
 
     const lastTwoChars = this.calculator.currentInput.slice(-2);
@@ -135,57 +140,51 @@ export class CalculatorComponent implements AfterViewInit {
     }
 
     if (nextOperator === '=') {
-      if (this.calculator.lastOperator !== '=') {
-        this.calculateResult();
-      }
+      this.calculateResult();
     } else {
       this.calculator.displayValue = this.calculator.currentInput;
-      this.calculator.newCalculation = false;
     }
 
-    this.calculator.lastOperator = nextOperator; // Set last operator
+    this.calculator.lastOperator = nextOperator; 
   }
 
   calculateResult() {
     try {
-      let sanitizedInput = this.calculator.currentInput.replace(/=$/, '').replace(/([-+*/])\1+/g, '$1');
+      let sanitizedInput = this.calculator.currentInput.replace(/=$/, '');
 
-      sanitizedInput = sanitizedInput.replace(/--/g, '+');
-
-      // Check if there are at least two operands and one operator
+      // 被演算数が2つ以上あるかをチェック
       const operands = sanitizedInput.split(/[+\-*/]/).filter(op => op !== '');
-      const operators = sanitizedInput.match(/[+\-*/]/g);
-
-      if (operands.length < 2 || !operators) {
-        this.calculator.displayValue = 'エラー';
-        this.calculator.error = true; // Set error flag
-        this.displayErrorMessage();
-        this.disableAllButtonsExceptAC(); // Disable all buttons except AC
-        return;
+      if (operands.length < 2) {
+        throw new Error('Invalid calculation');
       }
 
+      // ゼロ除算チェック
       if (/\/0(?![.\d])/.test(sanitizedInput)) {
         this.calculator.displayValue = '0で割れません';
-        this.calculator.error = true; // Set error flag
+        this.calculator.error = true; 
         this.displayErrorMessage();
-        this.disableAllButtonsExceptAC(); // Disable all buttons except AC
+        this.disableAllButtonsExceptAC(); 
         return;
       }
 
-      const result = eval(sanitizedInput);
+      // --を+に変換
+      let calculationInput = sanitizedInput.replace(/--/g, '+');
+      const result = eval(calculationInput);
       const formattedResult = isNaN(result) ? 'エラー' : String(Number(result.toFixed(10)));
 
       this.calculator.displayValue = formattedResult;
-      this.calculator.history.push(`${this.calculator.currentInput} ${formattedResult}`);
-      this.calculator.currentInput = ''; // Clear current input after calculation
+      this.calculator.currentInput = formattedResult; // 結果を currentInput に保存
       this.calculator.newCalculation = true;
-      this.calculator.error = false; // Reset error flag
+      this.calculator.error = false; 
+
+      // 計算が成功した場合のみ履歴に追加
+      this.calculator.history.push(`${sanitizedInput} = ${formattedResult}`);
       this.saveCalculatorData();
     } catch (error) {
       this.calculator.displayValue = 'エラー';
-      this.calculator.error = true; // Set error flag
+      this.calculator.error = true; 
       this.displayErrorMessage();
-      this.disableAllButtonsExceptAC(); // Disable all buttons except AC
+      this.disableAllButtonsExceptAC(); 
     }
   }
 
@@ -212,7 +211,15 @@ export class CalculatorComponent implements AfterViewInit {
   handleRecallButtonClick(event) {
     const index = event.target.getAttribute('data-index');
     const recalledCalculation = this.calculator.favorites[index];
-    this.calculator.currentInput += recalledCalculation; // Append the recalled calculation to the current input
+    
+    // ディスプレイの値が計算結果である場合
+    if (this.calculator.newCalculation) {
+      this.calculator.currentInput = this.calculator.displayValue + recalledCalculation;
+      this.calculator.newCalculation = false;
+    } else {
+      this.calculator.currentInput += recalledCalculation;
+    }
+    
     this.calculator.displayValue = this.calculator.currentInput;
     this.saveCalculatorData();
   }
@@ -245,11 +252,22 @@ export class CalculatorComponent implements AfterViewInit {
   exportHistoryToPDF() {
     const doc = new jsPDF();
     let y = 10;
-    this.calculator.history.forEach(entry => {
+    const lineHeight = 10; 
+    const margin = 10; 
+    const pageHeight = doc.internal.pageSize.height; 
+
+    this.calculator.history.forEach((entry, index) => {
       const formattedEntry = this.replaceOperators(entry);
-      doc.text(formattedEntry, 10, y);
-      y += 10;
+      doc.text(formattedEntry, margin, y);
+      y += lineHeight;
+
+      // ページを超えた場合、新しいページを追加
+      if (y > pageHeight - margin) {
+        doc.addPage();
+        y = margin;
+      }
     });
+
     doc.save('calculation_history.pdf');
   }
 

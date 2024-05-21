@@ -8,7 +8,7 @@ export const environment = {
         projectId: "training10053spring",
         storageBucket: "training10053spring.appspot.com",
         messagingSenderId: "285725495737",
-        appId: "1:285725495737:web:e5d1c534b1841e997be668",
-        measurementId: "G-J3ERC8EQZJ"
+        appId: "1:285725495737:web:5ac752b40285ba097be668",
+        measurementId: "G-S6BDZ742VL"
     }
 };
