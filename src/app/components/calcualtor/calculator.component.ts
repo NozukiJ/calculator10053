@@ -152,13 +152,11 @@ export class CalculatorComponent implements AfterViewInit {
     try {
       let sanitizedInput = this.calculator.currentInput.replace(/=$/, '');
 
-      // 被演算数が2つ以上あるかをチェック
       const operands = sanitizedInput.split(/[+\-*/]/).filter(op => op !== '');
       if (operands.length < 2) {
         throw new Error('Invalid calculation');
       }
 
-      // ゼロ除算チェック
       if (/\/0(?![.\d])/.test(sanitizedInput)) {
         this.calculator.displayValue = '0で割れません';
         this.calculator.error = true; 
@@ -167,17 +165,15 @@ export class CalculatorComponent implements AfterViewInit {
         return;
       }
 
-      // --を+に変換
       let calculationInput = sanitizedInput.replace(/--/g, '+');
       const result = eval(calculationInput);
       const formattedResult = isNaN(result) ? 'エラー' : String(Number(result.toFixed(10)));
 
       this.calculator.displayValue = formattedResult;
-      this.calculator.currentInput = formattedResult; // 結果を currentInput に保存
+      this.calculator.currentInput = formattedResult; 
       this.calculator.newCalculation = true;
       this.calculator.error = false; 
 
-      // 計算が成功した場合のみ履歴に追加
       this.calculator.history.push(`${sanitizedInput} = ${formattedResult}`);
       this.saveCalculatorData();
     } catch (error) {
@@ -212,7 +208,6 @@ export class CalculatorComponent implements AfterViewInit {
     const index = event.target.getAttribute('data-index');
     const recalledCalculation = this.calculator.favorites[index];
     
-    // ディスプレイの値が計算結果である場合
     if (this.calculator.newCalculation) {
       this.calculator.currentInput = this.calculator.displayValue + recalledCalculation;
       this.calculator.newCalculation = false;
@@ -252,20 +247,24 @@ export class CalculatorComponent implements AfterViewInit {
   exportHistoryToPDF() {
     const doc = new jsPDF();
     let y = 10;
-    const lineHeight = 10; 
-    const margin = 10; 
-    const pageHeight = doc.internal.pageSize.height; 
+    const lineHeight = 10;
+    const margin = 10;
+    const pageHeight = doc.internal.pageSize.height;
+    const pageWidth = doc.internal.pageSize.width;
+    const maxWidth = pageWidth - margin * 2; 
 
     this.calculator.history.forEach((entry, index) => {
       const formattedEntry = this.replaceOperators(entry);
-      doc.text(formattedEntry, margin, y);
-      y += lineHeight;
+      const lines = doc.splitTextToSize(formattedEntry, maxWidth);
+      lines.forEach(line => {
+        doc.text(line, margin, y);
+        y += lineHeight;
 
-      // ページを超えた場合、新しいページを追加
-      if (y > pageHeight - margin) {
-        doc.addPage();
-        y = margin;
-      }
+        if (y > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      });
     });
 
     doc.save('calculation_history.pdf');
