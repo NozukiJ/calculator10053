@@ -1,4 +1,10 @@
-<div>
+<div class="app-container">
+  <nav class="side-nav">
+    <a routerLink="/calendar" class="nav-link" (click)="logClick('カレンダー', $event)">カレンダー</a>
+    <a routerLink="/projects" class="nav-link" (click)="logClick('プロジェクト', $event)">プロジェクト</a>
+    <a routerLink="/tasks" class="nav-link" (click)="logClick('タスク一覧', $event)">タスク一覧</a>
+  </nav>
+  <div class="content">
     <router-outlet></router-outlet>
+  </div>
 </div>
-  
